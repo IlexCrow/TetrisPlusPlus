@@ -79,19 +79,7 @@ bool intersects(short tetramino, short _x, short _y) {
 }
 
 void rotate(short direction) {
-    short change = (current_tetramino[0] + direction) % 4;
-    switch (direction) {
-        case 1:
-            change = change == 0 ? -3 : 1;
-            break;
-        case -1:
-            change = change == 3 ? 3 : -1;
-            break;
-        default:
-            std::cout << "Error: invalid rotation direction\n";
-            break;
-    }
-
+    short change = ((current_tetramino[0] + direction) % 4 == (direction == 1 ? 0 : 3) ? -3 : 1) * direction;
     if (!intersects(current_tetramino[0] + change, current_tetramino[1], current_tetramino[2])) {
         current_tetramino[0] += change;
     }
