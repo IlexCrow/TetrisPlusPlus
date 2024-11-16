@@ -10,13 +10,16 @@ SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
 
 short render_board[10][20] = {};
-short current_tetramino[3] = {8, 1, 7};
+short current_tetramino[4] = {8, 1, 7, 0}; // Piece, x, y, floor timer
+
+int game_tick = 0;
+int fall_tick = 30;
+int ground_tick = 2;
 
 void draw_block(int x, int y) {
     const SDL_Rect rect = {(x + 1) * scale, (y + 1) * scale, scale, scale};
     SDL_RenderFillRect(renderer, &rect);
 }
-
 void draw_grid() {
     SDL_SetRenderDrawColor(renderer, 75, 75, 75, 255);
     SDL_Rect rect = {(scale), scale, scale, scale};
@@ -28,7 +31,6 @@ void draw_grid() {
         SDL_RenderDrawRect(renderer, &rect);
     }
 }
-
 void draw_board() {
     for (int i = 0; i < 20 * 10; i++) {
         const int x = i % 10;
@@ -39,7 +41,6 @@ void draw_board() {
         draw_block(x, y);
     }
 }
-
 void draw_tetramino(int tetramino, int _x, int _y) {
     const SDL_Colour colour = colours[tetrominos[tetramino][16]];
     SDL_SetRenderDrawColor(renderer, colour.r, colour.g, colour.b, colour.a);
@@ -52,7 +53,6 @@ void draw_tetramino(int tetramino, int _x, int _y) {
         draw_block(x, y);
     }
 }
-
 void draw() {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
@@ -77,33 +77,53 @@ bool intersects(short tetramino, short _x, short _y) {
     }
     return false;
 }
-
 void rotate(short direction) {
     short change = ((current_tetramino[0] + direction) % 4 == (direction == 1 ? 0 : 3) ? -3 : 1) * direction;
     if (!intersects(current_tetramino[0] + change, current_tetramino[1], current_tetramino[2])) {
         current_tetramino[0] += change;
     }
 }
-
-void move(short _x, short _y) {
+bool move(short _x, short _y) {
     // Move by _x,_y provided there is nothing in the way
     if (!intersects(current_tetramino[0], current_tetramino[1] + _x, current_tetramino[2] + _y)) {
         current_tetramino[1] += _x;
         current_tetramino[2] += _y;
+        return true;
     }
+    return false;
+}
+bool fall() {return move(0, 1);}
+void lock_current_tetramino() {
+    for (int i = 0; i < 16; i++) {
+        if (tetrominos[current_tetramino[0]][i] == 0) continue;
+        const int x = (i % 4) + (current_tetramino[1] + 1);
+        const int y = i / 4 + (current_tetramino[2] + 1);
+        render_board[x][y]=tetrominos[current_tetramino[0]][16];
+    }
+    current_tetramino[0]=0;
+    current_tetramino[1]=3;
+    current_tetramino[2]=0;
+    current_tetramino[3]=0;
 }
 
 void process() {
+    if (game_tick%30==0) {
+        if (!fall()) current_tetramino[3]++;
+    }
+    if (current_tetramino[3]>ground_tick) {
+        lock_current_tetramino();
+    }
+
 }
 
 int main() {
-    render_board[5][5] = 1;
-    render_board[5][6] = 2;
-    render_board[5][7] = 3;
-    render_board[5][8] = 4;
-    render_board[4][5] = 5;
-    render_board[3][5] = 6;
-    render_board[2][5] = 7;
+    // render_board[5][5] = 1;
+    // render_board[5][6] = 2;
+    // render_board[5][7] = 3;
+    // render_board[5][8] = 4;
+    // render_board[4][5] = 5;
+    // render_board[3][5] = 6;
+    // render_board[2][5] = 7;
 
 
     SDL_Init(SDL_INIT_VIDEO);
@@ -114,6 +134,8 @@ int main() {
     Uint64 start = SDL_GetPerformanceCounter(); // FPS cap variable
 
     while (running) {
+        game_tick++;
+        process();
         draw();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
