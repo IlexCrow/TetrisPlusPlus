@@ -57,7 +57,6 @@ void draw() {
     SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
     const SDL_Rect rect = {(scale), scale, 10 * scale, 20 * scale};
     SDL_RenderFillRect(renderer, &rect);
-
     draw_grid();
     draw_board();
     draw_tetramino(current_tetramino_arg);
@@ -65,11 +64,12 @@ void draw() {
     SDL_RenderPresent(renderer);
 }
 
-bool intersects(short tetramino, int _x, int _y) {
+bool intersects(short tetramino, short _x, short _y) {
     for (int i = 0; i < 16; i++) {
         if (tetrominos[tetramino][i] == 0) continue;
         const int x = (i % 4) + (_x+1);
         const int y = i / 4 + (_y+1);
+        if (0>x || 9<x || y < 0 || y > 19) return true;
         if (render_board[x][y]) return true;
     }
     return false;
@@ -77,6 +77,11 @@ bool intersects(short tetramino, int _x, int _y) {
 
 void rotate() {
 
+}
+void move(short _x, short _y) {
+    if (!intersects(current_tetramino[0], current_tetramino[1]+_x, current_tetramino[2]+_y)) {
+        current_tetramino[1]+=_x; current_tetramino[2]+=_y;
+    }
 }
 
 void process() {
@@ -98,7 +103,10 @@ int main() {
     SDL_RenderSetScale(renderer, 1, 1);
     SDL_SetWindowTitle(window, "Tetris++");
 
+    Uint64 start = SDL_GetPerformanceCounter(); // FPS cap variable
+
     while (running) {
+
         draw();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -108,12 +116,22 @@ int main() {
                     break;
                 case SDL_KEYDOWN:
                     if (event.key.keysym.sym ==SDLK_SPACE)continue;
-                    if (event.key.keysym.sym ==SDLK_w) continue;
+                    if (event.key.keysym.sym ==SDLK_UP) move(0, -1);
+                    if (event.key.keysym.sym ==SDLK_DOWN) move(0, 1);
+                    if (event.key.keysym.sym ==SDLK_LEFT) move(-1, 0);
+                    if (event.key.keysym.sym ==SDLK_RIGHT) move(1, 0);
                     if (event.key.keysym.sym ==SDLK_y){
                     };
                 break;
             }
         }
+
+        // FPS cap at 60
+        Uint64 end = SDL_GetPerformanceCounter();
+        float elapsedMS = (end - start) / (float)SDL_GetPerformanceFrequency() * 1000.0f;
+        SDL_Delay(floor(16.666f - elapsedMS));
+        start = SDL_GetPerformanceCounter();
+
     }
 
     return 0;
