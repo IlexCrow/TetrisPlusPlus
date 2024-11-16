@@ -116,6 +116,29 @@ void lock_current_tetramino(){
     }
     gen_new_tetramino();
 }
+void loose() {
+    std::cout << "You loose :)\n";
+    running=false;
+}
+void clear_line(short y) {
+    for (short i = 0; i < 10; i++) {
+        render_board[i][y]=0;
+    }
+    for (short j = y; j > 0; j--) {
+        for (short i = 0; i < 10; i++) {
+            render_board[i][j] = render_board[i][j-1];
+        }
+    }
+}
+void check_lines() {
+    for (short j = 0; j < 20; j++) {
+        for (short i = 0; i < 10; i++) {
+            if (render_board[i][j]==0){goto CONTINUE;}
+        }
+        clear_line(j);
+        CONTINUE:
+    }
+}
 
 void process() {
     if (game_tick%30==0) {
@@ -123,7 +146,9 @@ void process() {
     }
     if (current_tetramino[3]>ground_tick) {
         lock_current_tetramino();
+        if (intersects(current_tetramino_arg)){loose();} // Loose condition
     }
+    check_lines();
 
 }
 
@@ -155,6 +180,7 @@ int main() {
                     if (event.key.keysym.sym == SDLK_LEFT) move(-1, 0);
                     if (event.key.keysym.sym == SDLK_RIGHT) move(1, 0);
                     if (event.key.keysym.sym == SDLK_y) {
+                        clear_line(7);
                     };
                     break;
             }
