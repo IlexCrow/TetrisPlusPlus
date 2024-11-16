@@ -1,4 +1,5 @@
 #include <iostream>
+#include <random>
 #include <SDL2/SDL.h>
 #include "garbage.h"
 #define scale 36
@@ -8,6 +9,7 @@ const int screen_height = (scale * 22);
 bool running = true;
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
+std::uniform_int_distribution<> dist{0, 6};
 
 short render_board[10][20] = {};
 short current_tetramino[4] = {8, 1, 7, 0}; // Piece, x, y, floor timer
@@ -93,17 +95,26 @@ bool move(short _x, short _y) {
     return false;
 }
 bool fall() {return move(0, 1);}
-void lock_current_tetramino() {
+void drop() {
+    while (fall()){};
+    current_tetramino[3]=ground_tick+1;
+}
+void gen_new_tetramino() {
+    std::random_device seed;
+    std::mt19937 gen{seed()};
+    current_tetramino[0]= dist(gen)*4; // generate number    // render_board[5][5] = 1;
+    current_tetramino[1]=3;
+    current_tetramino[2]=0;
+    current_tetramino[3]=0;
+}
+void lock_current_tetramino(){
     for (int i = 0; i < 16; i++) {
         if (tetrominos[current_tetramino[0]][i] == 0) continue;
         const int x = (i % 4) + (current_tetramino[1] + 1);
         const int y = i / 4 + (current_tetramino[2] + 1);
         render_board[x][y]=tetrominos[current_tetramino[0]][16];
     }
-    current_tetramino[0]=0;
-    current_tetramino[1]=3;
-    current_tetramino[2]=0;
-    current_tetramino[3]=0;
+    gen_new_tetramino();
 }
 
 void process() {
@@ -117,14 +128,7 @@ void process() {
 }
 
 int main() {
-    // render_board[5][5] = 1;
-    // render_board[5][6] = 2;
-    // render_board[5][7] = 3;
-    // render_board[5][8] = 4;
-    // render_board[4][5] = 5;
-    // render_board[3][5] = 6;
-    // render_board[2][5] = 7;
-
+    gen_new_tetramino();
 
     SDL_Init(SDL_INIT_VIDEO);
     SDL_CreateWindowAndRenderer(screen_width, screen_height, 0, &window, &renderer);
@@ -144,9 +148,9 @@ int main() {
                     running = false;
                     break;
                 case SDL_KEYDOWN:
-                    if (event.key.keysym.sym == SDLK_SPACE)rotate(1);
+                    if (event.key.keysym.sym == SDLK_SPACE)drop();
                     if (event.key.keysym.sym == SDLK_z)rotate(-1);
-                    if (event.key.keysym.sym == SDLK_UP) move(0, -1);
+                    if (event.key.keysym.sym == SDLK_UP) rotate(1);
                     if (event.key.keysym.sym == SDLK_DOWN) move(0, 1);
                     if (event.key.keysym.sym == SDLK_LEFT) move(-1, 0);
                     if (event.key.keysym.sym == SDLK_RIGHT) move(1, 0);
