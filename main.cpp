@@ -10,23 +10,25 @@ SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
 
 short render_board[10][20] = {};
-short current_tetramino[3] = {7, 1, 7};
+short current_tetramino[3] = {8, 1, 7};
 
 void draw_block(int x, int y) {
     const SDL_Rect rect = {(x + 1) * scale, (y + 1) * scale, scale, scale};
     SDL_RenderFillRect(renderer, &rect);
 }
+
 void draw_grid() {
     SDL_SetRenderDrawColor(renderer, 75, 75, 75, 255);
     SDL_Rect rect = {(scale), scale, scale, scale};
     for (int i = 0; i < 20 * 10; i++) {
         const int x = i % 10;
         const int y = i / 10;
-        rect.x = (x+1)*scale;
-        rect.y = (y+1)*scale;
+        rect.x = (x + 1) * scale;
+        rect.y = (y + 1) * scale;
         SDL_RenderDrawRect(renderer, &rect);
     }
 }
+
 void draw_board() {
     for (int i = 0; i < 20 * 10; i++) {
         const int x = i % 10;
@@ -37,19 +39,20 @@ void draw_board() {
         draw_block(x, y);
     }
 }
+
 void draw_tetramino(int tetramino, int _x, int _y) {
     const SDL_Colour colour = colours[tetrominos[tetramino][16]];
     SDL_SetRenderDrawColor(renderer, colour.r, colour.g, colour.b, colour.a);
 
     for (int i = 0; i < 16; i++) {
-
         if (tetrominos[tetramino][i] == 0) continue;
-        const int x = (i % 4) + (_x+1);
-        const int y = i / 4 + (_y+1);
+        const int x = (i % 4) + (_x + 1);
+        const int y = i / 4 + (_y + 1);
 
         draw_block(x, y);
     }
 }
+
 void draw() {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
@@ -67,35 +70,42 @@ void draw() {
 bool intersects(short tetramino, short _x, short _y) {
     for (int i = 0; i < 16; i++) {
         if (tetrominos[tetramino][i] == 0) continue;
-        const int x = (i % 4) + (_x+1);
-        const int y = i / 4 + (_y+1);
-        if (0>x || 9<x || y < 0 || y > 19) return true;
+        const int x = (i % 4) + (_x + 1);
+        const int y = i / 4 + (_y + 1);
+        if (0 > x || 9 < x || y < 0 || y > 19) return true;
         if (render_board[x][y]) return true;
     }
     return false;
 }
 
-void rotate(bool direction) { // True: clockwise, False: anti-clockwise
-    int current = (current_tetramino[0]+1)%4;
-    if (current != 0) {
-        if (!intersects(current_tetramino[0]+1, current_tetramino[1], current_tetramino[2])) {
-            current_tetramino[0]++;
-        }
-    }else {
-        if (!intersects(current_tetramino[0]-4, current_tetramino[1], current_tetramino[2])) {
-            current_tetramino[0]-=3;
-        }
+void rotate(short direction) {
+    short change = (current_tetramino[0] + direction) % 4;
+    switch (direction) {
+        case 1:
+            change = change == 0 ? -3 : 1;
+            break;
+        case -1:
+            change = change == 3 ? 3 : -1;
+            break;
+        default:
+            std::cout << "Error: invalid rotation direction\n";
+            break;
     }
 
+    if (!intersects(current_tetramino[0] + change, current_tetramino[1], current_tetramino[2])) {
+        current_tetramino[0] += change;
+    }
 }
-void move(short _x, short _y) { // Move by _x,_y provided there is nothing in the way
-    if (!intersects(current_tetramino[0], current_tetramino[1]+_x, current_tetramino[2]+_y)) {
-        current_tetramino[1]+=_x; current_tetramino[2]+=_y;
+
+void move(short _x, short _y) {
+    // Move by _x,_y provided there is nothing in the way
+    if (!intersects(current_tetramino[0], current_tetramino[1] + _x, current_tetramino[2] + _y)) {
+        current_tetramino[1] += _x;
+        current_tetramino[2] += _y;
     }
 }
 
 void process() {
-
 }
 
 int main() {
@@ -116,7 +126,6 @@ int main() {
     Uint64 start = SDL_GetPerformanceCounter(); // FPS cap variable
 
     while (running) {
-
         draw();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -125,23 +134,23 @@ int main() {
                     running = false;
                     break;
                 case SDL_KEYDOWN:
-                    if (event.key.keysym.sym ==SDLK_SPACE)rotate(true);
-                    if (event.key.keysym.sym ==SDLK_UP) move(0, -1);
-                    if (event.key.keysym.sym ==SDLK_DOWN) move(0, 1);
-                    if (event.key.keysym.sym ==SDLK_LEFT) move(-1, 0);
-                    if (event.key.keysym.sym ==SDLK_RIGHT) move(1, 0);
-                    if (event.key.keysym.sym ==SDLK_y){
+                    if (event.key.keysym.sym == SDLK_SPACE)rotate(1);
+                    if (event.key.keysym.sym == SDLK_z)rotate(-1);
+                    if (event.key.keysym.sym == SDLK_UP) move(0, -1);
+                    if (event.key.keysym.sym == SDLK_DOWN) move(0, 1);
+                    if (event.key.keysym.sym == SDLK_LEFT) move(-1, 0);
+                    if (event.key.keysym.sym == SDLK_RIGHT) move(1, 0);
+                    if (event.key.keysym.sym == SDLK_y) {
                     };
-                break;
+                    break;
             }
         }
 
         // FPS cap at 60
         Uint64 end = SDL_GetPerformanceCounter();
-        float elapsedMS = (end - start) / (float)SDL_GetPerformanceFrequency() * 1000.0f;
+        float elapsedMS = (end - start) / (float) SDL_GetPerformanceFrequency() * 1000.0f;
         SDL_Delay(floor(16.666f - elapsedMS));
         start = SDL_GetPerformanceCounter();
-
     }
 
     return 0;
