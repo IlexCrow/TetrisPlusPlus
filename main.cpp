@@ -10,7 +10,7 @@ SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
 
 short render_board[10][20] = {};
-short current_tetramino[3] = {2, 1, 3};
+short current_tetramino[3] = {7, 1, 7};
 
 void draw_block(int x, int y) {
     const SDL_Rect rect = {(x + 1) * scale, (y + 1) * scale, scale, scale};
@@ -75,10 +75,20 @@ bool intersects(short tetramino, short _x, short _y) {
     return false;
 }
 
-void rotate() {
+void rotate(bool direction) { // True: clockwise, False: anti-clockwise
+    int current = (current_tetramino[0]+1)%4;
+    if (current != 0) {
+        if (!intersects(current_tetramino[0]+1, current_tetramino[1], current_tetramino[2])) {
+            current_tetramino[0]++;
+        }
+    }else {
+        if (!intersects(current_tetramino[0]-4, current_tetramino[1], current_tetramino[2])) {
+            current_tetramino[0]-=3;
+        }
+    }
 
 }
-void move(short _x, short _y) {
+void move(short _x, short _y) { // Move by _x,_y provided there is nothing in the way
     if (!intersects(current_tetramino[0], current_tetramino[1]+_x, current_tetramino[2]+_y)) {
         current_tetramino[1]+=_x; current_tetramino[2]+=_y;
     }
@@ -115,7 +125,7 @@ int main() {
                     running = false;
                     break;
                 case SDL_KEYDOWN:
-                    if (event.key.keysym.sym ==SDLK_SPACE)continue;
+                    if (event.key.keysym.sym ==SDLK_SPACE)rotate(true);
                     if (event.key.keysym.sym ==SDLK_UP) move(0, -1);
                     if (event.key.keysym.sym ==SDLK_DOWN) move(0, 1);
                     if (event.key.keysym.sym ==SDLK_LEFT) move(-1, 0);
