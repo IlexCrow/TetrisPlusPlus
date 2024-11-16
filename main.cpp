@@ -4,6 +4,7 @@
 #include "garbage.h"
 #define scale 36
 #define current_tetramino_arg current_tetramino[0], current_tetramino[1], current_tetramino[2]
+#define current_tetramino_phantom_arg current_tetramino_phantom[0], current_tetramino_phantom[1], current_tetramino_phantom[2]
 const int screen_width = (scale * 12);
 const int screen_height = (scale * 22);
 bool running = true;
@@ -13,6 +14,7 @@ std::uniform_int_distribution<> dist{0, 6};
 
 short render_board[10][20] = {};
 short current_tetramino[4] = {8, 1, 7, 0}; // Piece, x, y, floor timer
+short current_tetramino_phantom[4] = {0, 0, 0, 0}; // Version to show floor position.
 
 int game_tick = 0;
 int fall_tick = 30;
@@ -21,6 +23,10 @@ int ground_tick = 2;
 void draw_block(int x, int y) {
     const SDL_Rect rect = {(x + 1) * scale, (y + 1) * scale, scale, scale};
     SDL_RenderFillRect(renderer, &rect);
+}
+void draw_block_phantom(int x, int y) {
+    const SDL_Rect rect = {(x + 1) * scale, (y + 1) * scale, scale, scale};
+    SDL_RenderDrawRect(renderer, &rect);
 }
 void draw_grid() {
     SDL_SetRenderDrawColor(renderer, 75, 75, 75, 255);
@@ -55,6 +61,18 @@ void draw_tetramino(int tetramino, int _x, int _y) {
         draw_block(x, y);
     }
 }
+void draw_tetramino_phantom(int tetramino, int _x, int _y) {
+    const SDL_Colour colour = colours[tetrominos[tetramino][16]];
+    SDL_SetRenderDrawColor(renderer, colour.r, colour.g, colour.b, colour.a);
+
+    for (int i = 0; i < 16; i++) {
+        if (tetrominos[tetramino][i] == 0) continue;
+        const int x = (i % 4) + (_x + 1);
+        const int y = i / 4 + (_y + 1);
+
+        draw_block_phantom(x, y);
+    }
+}
 void draw() {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
@@ -65,6 +83,7 @@ void draw() {
     draw_grid();
     draw_board();
     draw_tetramino(current_tetramino_arg);
+    draw_tetramino_phantom(current_tetramino_phantom_arg);
 
     SDL_RenderPresent(renderer);
 }
@@ -79,10 +98,28 @@ bool intersects(short tetramino, short _x, short _y) {
     }
     return false;
 }
+bool move_phantom(short _x, short _y) {
+    // Move by _x,_y provided there is nothing in the way
+    if (!intersects(current_tetramino_phantom[0], current_tetramino_phantom[1] + _x, current_tetramino_phantom[2] + _y)) {
+        current_tetramino_phantom[1] += _x;
+        current_tetramino_phantom[2] += _y;
+        return true;
+    }
+    return false;
+}
+bool fall_phantom() {
+    return move_phantom(0, 1);
+}
+void drop_phantom() {
+    std::copy(std::begin(current_tetramino), std::end(current_tetramino), std::begin(current_tetramino_phantom));
+    while (fall_phantom()){};
+}
+
 void rotate(short direction) {
     short change = ((current_tetramino[0] + direction) % 4 == (direction == 1 ? 0 : 3) ? -3 : 1) * direction;
     if (!intersects(current_tetramino[0] + change, current_tetramino[1], current_tetramino[2])) {
         current_tetramino[0] += change;
+        drop_phantom();
     }
 }
 bool move(short _x, short _y) {
@@ -90,6 +127,7 @@ bool move(short _x, short _y) {
     if (!intersects(current_tetramino[0], current_tetramino[1] + _x, current_tetramino[2] + _y)) {
         current_tetramino[1] += _x;
         current_tetramino[2] += _y;
+        drop_phantom();
         return true;
     }
     return false;
@@ -97,7 +135,7 @@ bool move(short _x, short _y) {
 bool fall() {return move(0, 1);}
 void drop() {
     while (fall()){};
-    current_tetramino[3]=ground_tick+1;
+    // current_tetramino[3]=ground_tick+1;
 }
 void gen_new_tetramino() {
     std::random_device seed;
@@ -106,6 +144,7 @@ void gen_new_tetramino() {
     current_tetramino[1]=3;
     current_tetramino[2]=0;
     current_tetramino[3]=0;
+    drop_phantom();
 }
 void lock_current_tetramino(){
     for (int i = 0; i < 16; i++) {
@@ -125,6 +164,7 @@ void clear_line(short y) {
         render_board[i][y]=0;
     }
     for (short j = y; j > 0; j--) {
+        // std::copy(std::begin(render_board[i]), std::end(render_board[i]), std::begin(render_board[i][j-1])); // Yay, thanks past me for ordering the 2D array the stupid way :)
         for (short i = 0; i < 10; i++) {
             render_board[i][j] = render_board[i][j-1];
         }
@@ -140,7 +180,10 @@ void check_lines() {
     }
 }
 
+
+
 void process() {
+    check_lines();
     if (game_tick%30==0) {
         if (!fall()) current_tetramino[3]++;
     }
@@ -148,8 +191,6 @@ void process() {
         lock_current_tetramino();
         if (intersects(current_tetramino_arg)){loose();} // Loose condition
     }
-    check_lines();
-
 }
 
 int main() {
@@ -159,6 +200,7 @@ int main() {
     SDL_CreateWindowAndRenderer(screen_width, screen_height, 0, &window, &renderer);
     SDL_RenderSetScale(renderer, 1, 1);
     SDL_SetWindowTitle(window, "Tetris++");
+    // SDL_SetWindowResizable(window, SDL_TRUE); // Breaks SOOOO much shite
 
     Uint64 start = SDL_GetPerformanceCounter(); // FPS cap variable
 
