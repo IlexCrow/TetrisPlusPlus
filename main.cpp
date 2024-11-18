@@ -1,16 +1,21 @@
 #include <iostream>
 #include <random>
+#include <unistd.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include "garbage.h"
 #define scale 36
 #define current_tetramino_arg current_tetramino[0], current_tetramino[1], current_tetramino[2]
 #define current_tetramino_phantom_arg current_tetramino_phantom[0], current_tetramino_phantom[1], current_tetramino_phantom[2]
-const int screen_width = (scale * 12);
+const int screen_width = (scale * 21);
 const int screen_height = (scale * 22);
 bool running = true;
+bool paused = false;
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
 std::uniform_int_distribution<> dist{0, 6};
+// SDL_Surface* overlay_surface;
+SDL_Texture* overlay;
 
 short render_board[10][20] = {};
 short current_tetramino[4] = {8, 1, 7, 0}; // Piece, x, y, floor timer
@@ -18,11 +23,13 @@ short current_tetramino_phantom[4] = {0, 0, 0, 0}; // Version to show floor posi
 
 int game_tick = 0;
 int fall_tick = 30;
-int ground_tick = 2;
+int ground_tick = 1;
 
 void draw_block(int x, int y) {
-    const SDL_Rect rect = {(x + 1) * scale, (y + 1) * scale, scale, scale};
+    SDL_Rect rect = {(x + 1) * scale, (y + 1) * scale, scale, scale};
     SDL_RenderFillRect(renderer, &rect);
+
+    SDL_RenderCopy(renderer, overlay, nullptr, &rect);
 }
 void draw_block_phantom(int x, int y) {
     const SDL_Rect rect = {(x + 1) * scale, (y + 1) * scale, scale, scale};
@@ -73,17 +80,37 @@ void draw_tetramino_phantom(int tetramino, int _x, int _y) {
         draw_block_phantom(x, y);
     }
 }
+void draw_block_boxes() {
+    SDL_SetRenderDrawColor(renderer, 75, 75, 75, 255);
+    SDL_Rect rect = {13*scale, 5*scale, int(scale*6), int(scale*6)};
+    SDL_RenderFillRect(renderer, &rect);
+    rect.y += 7*scale;
+    SDL_RenderFillRect(renderer, &rect);
+}
+void draw_theory_tetraminos() {
+    draw_tetramino(0, 12, 4);
+    draw_tetramino(10, 12, 11);
+}
+void draw_ui() {
+    draw_block_boxes();
+    draw_theory_tetraminos();
+}
 void draw() {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
+
+
+
     SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
-    const SDL_Rect rect = {(scale), scale, 10 * scale, 20 * scale};
+    SDL_Rect rect = {(scale), scale, 10 * scale, 20 * scale};
     SDL_RenderFillRect(renderer, &rect);
     draw_grid();
     draw_board();
     draw_tetramino(current_tetramino_arg);
     draw_tetramino_phantom(current_tetramino_phantom_arg);
+    draw_ui();
+
 
     SDL_RenderPresent(renderer);
 }
@@ -181,7 +208,6 @@ void check_lines() {
 }
 
 
-
 void process() {
     check_lines();
     if (game_tick%30==0) {
@@ -195,18 +221,27 @@ void process() {
 
 int main() {
     gen_new_tetramino();
+    // overlay = SDL_CreateTextureFromSurface(renderer, overlay_surface);
+
 
     SDL_Init(SDL_INIT_VIDEO);
     SDL_CreateWindowAndRenderer(screen_width, screen_height, 0, &window, &renderer);
     SDL_RenderSetScale(renderer, 1, 1);
     SDL_SetWindowTitle(window, "Tetris++");
     // SDL_SetWindowResizable(window, SDL_TRUE); // Breaks SOOOO much shite
+    overlay = IMG_LoadTexture(renderer, "../overlay.png");
+    if (!overlay) {
+        std::cerr << "Failed to load overlay texture: " << IMG_GetError() << std::endl;
+        return -1;
+    }
 
     Uint64 start = SDL_GetPerformanceCounter(); // FPS cap variable
 
     while (running) {
         game_tick++;
-        process();
+        if (!paused) {
+            process();
+        }
         draw();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -215,6 +250,7 @@ int main() {
                     running = false;
                     break;
                 case SDL_KEYDOWN:
+                    if (event.key.keysym.sym == SDLK_ESCAPE)(paused = !paused);
                     if (event.key.keysym.sym == SDLK_SPACE)drop();
                     if (event.key.keysym.sym == SDLK_z)rotate(-1);
                     if (event.key.keysym.sym == SDLK_UP) rotate(1);
