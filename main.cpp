@@ -19,7 +19,9 @@ SDL_Texture* overlay;
 
 short render_board[10][20] = {};
 short current_tetramino[4] = {8, 1, 7, 0}; // Piece, x, y, floor timer
+short next_tetramino[4] = {8, 1, 7, 0}; // Piece, x, y, floor timer
 short current_tetramino_phantom[4] = {0, 0, 0, 0}; // Version to show floor position.
+int score = 0;
 
 int game_tick = 0;
 int fall_tick = 30;
@@ -98,9 +100,6 @@ void draw_ui() {
 void draw() {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
-
-
-
 
     SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
     SDL_Rect rect = {(scale), scale, 10 * scale, 20 * scale};
@@ -183,7 +182,7 @@ void lock_current_tetramino(){
     gen_new_tetramino();
 }
 void loose() {
-    std::cout << "You loose :)\n";
+    std::cout << "Final score: "<< score << std::endl;
     running=false;
 }
 void clear_line(short y) {
@@ -198,13 +197,29 @@ void clear_line(short y) {
     }
 }
 void check_lines() {
+    short lines_cleared = 0;
     for (short j = 0; j < 20; j++) {
         for (short i = 0; i < 10; i++) {
             if (render_board[i][j]==0){goto CONTINUE;}
         }
         clear_line(j);
+        lines_cleared++;
         CONTINUE:
     }
+    switch (lines_cleared){
+        case 1:
+            score += 40;
+            break;
+        case 2:
+            score += 100;
+            break;
+        case 3:
+            score += 300;
+        case 4:
+            score += 1200;
+        default:
+            break;
+    };
 }
 
 
