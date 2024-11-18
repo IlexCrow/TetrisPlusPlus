@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <array>
 #include "garbage.h"
 #define scale 36
 #define current_tetramino_arg current_tetramino[0], current_tetramino[1], current_tetramino[2]
@@ -19,9 +20,12 @@ SDL_Texture* overlay;
 
 short render_board[10][20] = {};
 short current_tetramino[4] = {8, 1, 7, 0}; // Piece, x, y, floor timer
+short held_tetramino[4] = {255, 0, 0, 0}; // Piece, x, y, floor timer
 short next_tetramino[4] = {8, 1, 7, 0}; // Piece, x, y, floor timer
+short buffer_tetramino[4] = {0, 0, 0, 0}; // Piece, x, y, floor timer
 short current_tetramino_phantom[4] = {0, 0, 0, 0}; // Version to show floor position.
 int score = 0;
+bool held = false;
 
 int game_tick = 0;
 int fall_tick = 30;
@@ -30,7 +34,6 @@ int ground_tick = 1;
 void draw_block(int x, int y) {
     SDL_Rect rect = {(x + 1) * scale, (y + 1) * scale, scale, scale};
     SDL_RenderFillRect(renderer, &rect);
-
     SDL_RenderCopy(renderer, overlay, nullptr, &rect);
 }
 void draw_block_phantom(int x, int y) {
@@ -90,8 +93,12 @@ void draw_block_boxes() {
     SDL_RenderFillRect(renderer, &rect);
 }
 void draw_theory_tetraminos() {
-    draw_tetramino(0, 12, 4);
-    draw_tetramino(10, 12, 11);
+    draw_tetramino(next_tetramino[0], 12, 4);
+    // draw_tetramino(0, 12, 4);
+
+    if (held_tetramino[0]!=255) {
+        draw_tetramino(held_tetramino[0], 12, 11);
+    }
 }
 void draw_ui() {
     draw_block_boxes();
@@ -164,12 +171,14 @@ void drop() {
     // current_tetramino[3]=ground_tick+1;
 }
 void gen_new_tetramino() {
+    held = false;
+    std::copy(std::begin(next_tetramino), std::end(next_tetramino), std::begin(current_tetramino));
     std::random_device seed;
     std::mt19937 gen{seed()};
-    current_tetramino[0]= dist(gen)*4; // generate number    // render_board[5][5] = 1;
-    current_tetramino[1]=3;
-    current_tetramino[2]=0;
-    current_tetramino[3]=0;
+    next_tetramino[0]= dist(gen)*4; // generate number    // render_board[5][5] = 1;
+    next_tetramino[1]=3;
+    next_tetramino[2]=0;
+    next_tetramino[3]=0;
     drop_phantom();
 }
 void lock_current_tetramino(){
@@ -220,6 +229,21 @@ void check_lines() {
         default:
             break;
     };
+}
+void hold() {
+    if (held_tetramino[0]==255) {
+        std::copy(std::begin(current_tetramino), std::end(current_tetramino), std::begin(held_tetramino));
+        gen_new_tetramino();
+        held = true;
+    }else {
+        if (!intersects(held_tetramino[0], current_tetramino[1], current_tetramino[2])) {
+            std::copy(std::begin(current_tetramino), std::end(current_tetramino), std::begin(buffer_tetramino));
+            std::copy(std::begin(held_tetramino), std::end(held_tetramino), std::begin(current_tetramino));
+            std::copy(std::begin(buffer_tetramino), std::end(buffer_tetramino), std::begin(held_tetramino));
+            held = true;
+            drop_phantom();
+        }
+    }
 }
 
 
@@ -272,8 +296,10 @@ int main() {
                     if (event.key.keysym.sym == SDLK_DOWN) move(0, 1);
                     if (event.key.keysym.sym == SDLK_LEFT) move(-1, 0);
                     if (event.key.keysym.sym == SDLK_RIGHT) move(1, 0);
-                    if (event.key.keysym.sym == SDLK_y) {
-                        clear_line(7);
+                    if (event.key.keysym.sym == SDLK_c) {
+                        if (!held) {
+                            hold();
+                        }
                     };
                     break;
             }
