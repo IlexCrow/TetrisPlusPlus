@@ -273,6 +273,7 @@ int main() {
         std::cerr << "Failed to load overlay texture: " << IMG_GetError() << std::endl;
         return -1;
     }
+    gen_new_tetramino();
 
     Uint64 start = SDL_GetPerformanceCounter(); // FPS cap variable
 
@@ -282,25 +283,28 @@ int main() {
             process();
         }
         draw();
-        SDL_Event event;
+            SDL_Event event;
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
                 case SDL_QUIT:
                     running = false;
                     break;
                 case SDL_KEYDOWN:
+                    if (!paused) {
+                        if (event.key.keysym.sym == SDLK_SPACE)drop();
+                        if (event.key.keysym.sym == SDLK_z)rotate(-1);
+                        if (event.key.keysym.sym == SDLK_UP) rotate(1);
+                        if (event.key.keysym.sym == SDLK_DOWN) move(0, 1);
+                        if (event.key.keysym.sym == SDLK_LEFT) move(-1, 0);
+                        if (event.key.keysym.sym == SDLK_RIGHT) move(1, 0);
+                        if (event.key.keysym.sym == SDLK_c) {
+                            if (!held) {
+                                hold();
+                            }
+                        };
+                    }
                     if (event.key.keysym.sym == SDLK_ESCAPE)(paused = !paused);
-                    if (event.key.keysym.sym == SDLK_SPACE)drop();
-                    if (event.key.keysym.sym == SDLK_z)rotate(-1);
-                    if (event.key.keysym.sym == SDLK_UP) rotate(1);
-                    if (event.key.keysym.sym == SDLK_DOWN) move(0, 1);
-                    if (event.key.keysym.sym == SDLK_LEFT) move(-1, 0);
-                    if (event.key.keysym.sym == SDLK_RIGHT) move(1, 0);
-                    if (event.key.keysym.sym == SDLK_c) {
-                        if (!held) {
-                            hold();
-                        }
-                    };
+
                     break;
             }
         }
